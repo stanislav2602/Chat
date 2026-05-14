@@ -95,8 +95,8 @@ const port = process.env.PORT || 3000;
 
 const bootstrap = async () => {
   try {
-    server.listen(port, () =>
-      logger.info(`Server has been started on http://localhost:${port}`)
+    server.listen(port, '0.0.0.0', () =>
+      logger.info(`Server has been started on http://0.0.0.0:${port}`)
     );
   } catch (error) {
     logger.error(`Error: ${error.message}`);

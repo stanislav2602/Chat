@@ -10,7 +10,12 @@ import WebSocket, { WebSocketServer } from "ws";
 const app = express();
 const logger = pino(pinoPretty());
 
-app.use(cors());
+app.use(cors({
+    origin: '*'
+}));
+app.disable('x-powered-by');
+app.set('trust proxy', true);
+
 app.use(
   bodyParser.json({
     type(req) {
@@ -31,6 +36,7 @@ app.post("/new-user", async (request, response) => {
       message: "This name is already taken!",
     };
     response.status(400).send(JSON.stringify(result)).end();
+    return;
   }
   const { name } = request.body;
   const isExist = userState.find((user) => user.name === name);
@@ -63,16 +69,19 @@ wsServer.on("connection", (ws) => {
   ws.on("message", (msg, isBinary) => {
     const receivedMSG = JSON.parse(msg);
     logger.info(`Message received: ${JSON.stringify(receivedMSG)}`);
-    // обработка выхода пользователя
     if (receivedMSG.type === "exit") {
       const idx = userState.findIndex(
         (user) => user.name === receivedMSG.user.name
       );
-      userState.splice(idx, 1);
+      if (idx !== -1) {
+        userState.splice(idx, 1);
+      }
+      [...wsServer.clients]
+        .filter((o) => o.readyState === WebSocket.OPEN)
+        .forEach((o) => o.send(JSON.stringify(userState)));
       logger.info(`User with name "${receivedMSG.user.name}" has been deleted`);
       return;
     }
-    // обработка отправки сообщения
     if (receivedMSG.type === "send") {
       [...wsServer.clients]
         .filter((o) => o.readyState === WebSocket.OPEN)
@@ -80,9 +89,6 @@ wsServer.on("connection", (ws) => {
       logger.info("Message sent to all users");
     }
   });
-  [...wsServer.clients]
-    .filter((o) => o.readyState === WebSocket.OPEN)
-    .forEach((o) => o.send(JSON.stringify(userState)));
 });
 
 const port = process.env.PORT || 3000;

@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Чат</title>
+</head>
+<body>
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <h2>Выберите псевдоним</h2>
+            <input type="text" id="nickname-input" placeholder="Введите псевдоним">
+            <div id="error-message" class="error-message"></div>
+            <button id="submit-nickname">Продолжить</button>
+        </div>
+    </div>
+
+    <div id="chat-container" class="chat-container" style="display: none;">
+        <div class="users-panel">
+            <div class="users-header">
+                <h3>Участники</h3>
+            </div>
+            <div id="users-list" class="users-list"></div>
+        </div>
+        
+        <div class="chat-area">
+            <div id="messages-area" class="messages-area"></div>
+            <input type="text" id="message-input" class="message-input" placeholder="Введите сообщение...">
+        </div>
+    </div>
+</body>
+</html>

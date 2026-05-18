@@ -6,6 +6,7 @@ let ws = null;
 let currentUser = null;
 let reconnectAttempts = 0;
 const MAX_RECONNECT_ATTEMPTS = 5;
+let previousUsers = [];
 
 const modal = document.getElementById('modal');
 const nicknameInput = document.getElementById('nickname-input');
@@ -33,23 +34,14 @@ function addSystemMessage(text) {
     messagesArea.scrollTop = messagesArea.scrollHeight;
 }
 
-function updateUsersList(users) {
-    usersList.innerHTML = '';
-    
-    for (let i = 0; i < users.length; i++) {
-        const user = users[i];
-        const userDiv = document.createElement('div');
-        userDiv.className = 'user-item';
-        
-        if (user.id === currentUser.id) {
-            userDiv.classList.add('current-user');
-            userDiv.textContent = user.name + ' (Вы)';
-        } else {
-            userDiv.textContent = user.name;
-        }
-        
-        usersList.appendChild(userDiv);
-    }
+function escapeHtml(str) {
+    if (!str) return '';
+    return str
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 function addMessage(msg, isMine) {
@@ -74,14 +66,52 @@ function addMessage(msg, isMine) {
     messagesArea.scrollTop = messagesArea.scrollHeight;
 }
 
-function escapeHtml(str) {
-    if (!str) return '';
-    return str
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
+function updateUsersList(users) {
+    if (previousUsers.length > 0) {
+        for (let i = 0; i < previousUsers.length; i++) {
+            const oldUser = previousUsers[i];
+            const stillExists = users.some(function(u) {
+                return u.id === oldUser.id;
+            });
+            
+            if (!stillExists && oldUser.id !== currentUser.id) {
+                addSystemMessage('Пользователь "' + escapeHtml(oldUser.name) + '" покинул чат');
+            }
+        }
+        
+        for (let i = 0; i < users.length; i++) {
+            const newUser = users[i];
+            const wasExists = previousUsers.some(function(u) {
+                return u.id === newUser.id;
+            });
+            
+            if (!wasExists && newUser.id !== currentUser.id) {
+                addSystemMessage('Пользователь "' + escapeHtml(newUser.name) + '" присоединился к чату');
+            }
+        }
+    }
+    
+    previousUsers = [];
+    for (let i = 0; i < users.length; i++) {
+        previousUsers.push({
+            id: users[i].id,
+            name: users[i].name
+        });
+    }
+    
+    usersList.innerHTML = '';
+    for (let i = 0; i < users.length; i++) {
+        const user = users[i];
+        const userDiv = document.createElement('div');
+        userDiv.className = 'user-item';
+        if (user.id === currentUser.id) {
+            userDiv.classList.add('current-user');
+            userDiv.textContent = user.name + ' (Вы)';
+        } else {
+            userDiv.textContent = user.name;
+        }
+        usersList.appendChild(userDiv);
+    }
 }
 
 function connectWebSocket() {
@@ -89,7 +119,6 @@ function connectWebSocket() {
     ws = new WebSocket(wsUrl);
     
     ws.onopen = function() {
-        console.log('WebSocket connected');
         reconnectAttempts = 0;
         addSystemMessage('Соединение установлено');
     };
@@ -99,26 +128,16 @@ function connectWebSocket() {
         
         if (Array.isArray(data)) {
             updateUsersList(data);
-        }
-        else if (data.type === 'send') {
+        } else if (data.type === 'send') {
             addMessage(data, data.user.id === currentUser.id);
-        }
-        else if (data.type === 'user_left') {
-            addSystemMessage('Пользователь "' + data.user.name + '" покинул чат');
-        }
-        else if (data.type === 'user_joined') {
-            addSystemMessage('Пользователь "' + data.user.name + '" присоединился к чату');
         }
     };
     
     ws.onerror = function(error) {
-        console.log('WebSocket error:', error);
         showError('Ошибка соединения');
     };
     
     ws.onclose = function(event) {
-        console.log('WebSocket disconnected, code:', event.code);
-        
         if (currentUser && reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
             reconnectAttempts++;
             showError('Соединение потеряно. Попытка переподключения ' + reconnectAttempts + '/' + MAX_RECONNECT_ATTEMPTS);

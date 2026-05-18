@@ -198,3 +198,18 @@ body {
 .message-input:focus {
     outline: none;
 }
+
+.message.system-message {
+    max-width: 100%;
+    text-align: center;
+    align-self: center;
+}
+
+.message.system-message .message-content.system {
+    background: #e9ecef;
+    color: #6c757d;
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 16px;
+    box-shadow: none;
+}

@@ -66,9 +66,11 @@ const server = http.createServer(app);
 const wsServer = new WebSocketServer({ server });
 wsServer.on("connection", (ws) => {
   ws.send(JSON.stringify(userState));
+  
   ws.on("message", (msg, isBinary) => {
     const receivedMSG = JSON.parse(msg);
     logger.info(`Message received: ${JSON.stringify(receivedMSG)}`);
+    
     if (receivedMSG.type === "exit") {
       const idx = userState.findIndex(
         (user) => user.name === receivedMSG.user.name
@@ -76,12 +78,23 @@ wsServer.on("connection", (ws) => {
       if (idx !== -1) {
         userState.splice(idx, 1);
       }
+      
       [...wsServer.clients]
         .filter((o) => o.readyState === WebSocket.OPEN)
         .forEach((o) => o.send(JSON.stringify(userState)));
+      
+      const leaveEvent = JSON.stringify({
+        type: 'user_left',
+        user: receivedMSG.user
+      });
+      [...wsServer.clients]
+        .filter((o) => o.readyState === WebSocket.OPEN)
+        .forEach((o) => o.send(leaveEvent));
+      
       logger.info(`User with name "${receivedMSG.user.name}" has been deleted`);
       return;
     }
+    
     if (receivedMSG.type === "send") {
       [...wsServer.clients]
         .filter((o) => o.readyState === WebSocket.OPEN)
